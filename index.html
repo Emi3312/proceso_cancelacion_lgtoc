@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Proceso de Cancelación</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            color: #1d1d1f;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        button {
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background-color: #0077ED;
+            transform: scale(1.02);
+        }
+
+        button.reset {
+            background-color: #e5e5e5;
+            color: #333;
+        }
+        
+        button.reset:hover {
+            background-color: #d1d1d1;
+        }
+
+        #diagram-container {
+            flex: 1;
+            background-color: #ffffff;
+            overflow: hidden;
+            position: relative;
+            cursor: grab;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #diagram-container:active {
+            cursor: grabbing;
+        }
+
+        .mermaid-output {
+            display: flex;
+            justify-content: center;
+            transform-origin: 0 0;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            color: #86868b;
+        }
+
+        /* --- MARCA DE AGUA SUTIL (UPDATED) --- */
+        .watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            
+            /* Fondo mucho más sutil (0.25 de opacidad) */
+            background: rgba(255, 255, 255, 0.25);
+            
+            /* Blur para el efecto cristal */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            
+            /* Borde muy fino y transparente */
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            
+            /* Sombra muy suave */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            
+            /* Texto gris suave (0.4 de opacidad) */
+            color: rgba(0, 0, 0, 0.4);
+            
+            padding: 8px 18px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            z-index: 100;
+            transition: all 0.4s ease; /* Transición suave */
+            user-select: none;
+            pointer-events: auto; /* Asegura que detecte el mouse */
+        }
+
+        /* Efecto al pasar el mouse: Se hace visible */
+        .watermark:hover {
+            background: rgba(255, 255, 255, 0.85);
+            color: #1d1d1f;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (max-width: 400px) {
+            .watermark {
+                bottom: 10px;
+                right: 10px;
+                font-size: 0.7rem;
+                padding: 6px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 title="Proceso de cancelación de títulos de crédito">Proceso de cancelación de títulos de crédito</h1>
+        <div class="controls">
+            <button onclick="zoomOut()">-</button>
+            <button class="reset" onclick="resetZoom()">Reset</button>
+            <button onclick="zoomIn()">+</button>
+        </div>
+    </header>
+
+    
+    <div class="watermark">Programado por: Porfirio Emiliano Osorio Rios</div>
+
+    <div id="diagram-container">
+        <div class="loading" id="loading-msg">Cargando diagrama...</div>
+        <div id="mermaid-chart" class="mermaid-output"></div>
+    </div>
+
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                primaryColor: '#eef2ff',
+                primaryTextColor: '#1d1d1f',
+                primaryBorderColor: '#0071e3',
+                lineColor: '#86868b',
+                tertiaryColor: '#f9fafb' 
+            },
+            securityLevel: 'loose',
+            flowchart: {
+                htmlLabels: true,
+                useMaxWidth: false,
+            }
+        });
+
+        const graphDefinition = `
+graph TB
+    Start(["Inicio: Siniestro del Título"])
+    
+    %% Evaluación Inicial
+    Start --> Eval{"¿Qué tipo de<br/>título?"}
+    
+    %% --- CLASIFICACIÓN ---
+    Eval -->|Título al Portador| Portador{"¿Destruido<br/>o mutilado?<br/>Art. 75"}
+    Portador -->|SÍ| ProcCancelacion["Procede Juicio de Cancelación<br/>por destrucción/mutilación<br/>Art. 75"]
+    Portador -->|NO| NoAplica1["❌ NO APLICA cancelación<br/>Por pérdida/robo/extravío<br/>Arts. 73-74"]
+    
+    Eval -->|Título No Negociable| Especial1["✓ Procedimiento<br/>Especial Art. 66"]
+    Eval -->|Título Nominativo<br/>o a la Orden| Siniestro{"¿Qué ocurrió?"}
+    
+    %% Tipo de Siniestro
+    Siniestro -->|Robo/Extravío| ProcCancelacion
+    Siniestro -->|Destrucción Total| ProcCancelacion
+    Siniestro -->|Mutilación/Deterioro| Deterioro{"¿Afecta<br/>menciones<br/>esenciales?"}
+    
+    Deterioro -->|NO| Especial2["✓ Procedimiento<br/>Simple Art. 65"]
+    Deterioro -->|SÍ| ProcCancelacion
+    
+    %% ETAPA 1: DEMANDA
+    ProcCancelacion --> Etapa1["<b>ETAPA 1: DEMANDA</b><br/>Art. 44"]
+    
+    Etapa1 --> Competencia["Juez del lugar<br/>donde el título<br/>debe ser pagado<br/>Art. 44"]
+    
+    Competencia --> Requisitos["<b>Requisitos de la Demanda:</b><br/>✓ Copia o menciones esenciales<br/>✓ Nombres y direcciones obligados<br/>✓ Descripción del siniestro<br/>✓ Prueba de posesión<br/>✓ Prueba de desposesión"]
+    
+    Requisitos --> Plazo10{"¿Pruebas<br/>presentadas en<br/>10 días?"}
+    
+    Plazo10 -->|NO| Desechada1["❌ Demanda<br/>DESECHADA"]
+    Plazo10 -->|SÍ| Garantia["<b>Garantía Art. 42:</b><br/>Fianza suficiente para<br/>reparar daños y perjuicios"]
+    
+    Garantia --> GarantiaOK{"¿Garantía<br/>exhibida?"}
+    GarantiaOK -->|NO| NoSuspension["⚠️ NO se decreta<br/>suspensión"]
+    NoSuspension --> JuicioIneficaz["❌ Juicio sin Efecto<br/>El deudor puede pagar<br/>a quien presente el título"]
+    GarantiaOK -->|SÍ| Etapa2
+    
+    %% ETAPA 2: AUTO INICIAL
+    Etapa2["<b>ETAPA 2: AUTO INICIAL</b><br/>Decreto de Cancelación<br/>Provisional Art. 45"]
+    
+    Etapa2 --> AutoContenido["<b>El Auto ordena:</b><br/>I. Pago condicionado al reclamante<br/>II. Suspensión del pago<br/>III. Publicación en DOF<br/>IV. Orden de duplicado futuro<br/>V. Aviso a Bolsas de Valores"]
+    
+    AutoContenido --> Notificaciones["<b>Notificaciones:</b><br/>• Personal a todos obligados<br/>• UNA publicación en DOF<br/>erga omnes"]
+    
+    %% ETAPA 3: OPOSICIÓN
+    Notificaciones --> Etapa3["<b>ETAPA 3: PERIODO DE OPOSICIÓN</b>"]
+    
+    Etapa3 --> Plazos{"¿Cuándo vence<br/>el título?"}
+    
+    Plazos -->|Vencido o vence<br/>antes de 60 días| Plazo60["Plazo: 60 días<br/>desde publicación DOF<br/>Art. 45-I"]
+    Plazos -->|Vence después<br/>de 60 días| PlazoExt["Plazo: hasta 30 días<br/>después del vencimiento<br/>Art. 45-I"]
+    
+    Plazo60 --> Oposicion{"¿Alguien se<br/>opone?"}
+    PlazoExt --> Oposicion
+    
+    Oposicion -->|NO| Etapa4
+    Oposicion -->|SÍ| Incidente["<b>INCIDENTE DE OPOSICIÓN</b><br/>Art. 47-52"]
+    
+    Incidente --> MejorDerecho{"¿Opositor tiene<br/>MEJOR DERECHO?<br/>Art. 47"}
+    
+    MejorDerecho --> Criteria["<b>Criterios:</b><br/>✓ Buena fe<br/>✓ Sin culpa grave<br/>✓ Cadena de endosos válida<br/>✓ Antes de DOF"]
+    
+    Criteria --> Sentencia1{"Sentencia del<br/>Incidente"}
+    
+    Sentencia1 -->|Oposición<br/>PROCEDE| Revoca["<b>Art. 49:</b><br/>Se REVOCA cancelación<br/>Reclamante paga daños<br/>❌ FIN DEL JUICIO"]
+    
+    Sentencia1 -->|Oposición<br/>DESECHADA| Continua["Opositor paga costas<br/>Procedimiento continúa<br/>Art. 49"]
+    
+    Continua --> MasOposiciones{"¿Hay más<br/>oposiciones?"}
+    MasOposiciones -->|SÍ| Incidente
+    MasOposiciones -->|NO| Etapa4
+    
+    %% ETAPA 4: CANCELACIÓN FIRME
+    Etapa4["<b>ETAPA 4: CANCELACIÓN FIRME</b><br/>Art. 53"]
+    
+    Etapa4 --> Efectos["<b>EFECTOS:</b><br/>✓ Título original SIN EFECTOS<br/>✓ Desincorporación del derecho<br/>✓ Reclamante legitimado<br/>✓ Puede cobrar o pedir duplicado"]
+    
+    %% ETAPA 5: EJECUCIÓN
+    Efectos --> Etap5["<b>ETAPA 5: EJECUCIÓN</b><br/>Art. 54"]
+    
+    Etap5 --> TipoTitulo{"¿El título<br/>está vencido?"}
+    
+    TipoTitulo -->|SÍ - Vencido| ViaCobro["Demanda de PAGO<br/>en vía ejecutiva"]
+    TipoTitulo -->|NO - Por vencer| ViaDuplicado["Demanda para obtener<br/>DUPLICADO Art. 57"]
+    
+    ViaCobro --> Plazo30["⚠️ PLAZO FATAL<br/>30 días desde que<br/>quedó firme<br/>CADUCIDAD Art. 54"]
+    
+    Plazo30 --> Presenta{"¿Demanda<br/>presentada<br/>en tiempo?"}
+    
+    Presenta -->|NO| Caducidad["❌ CADUCIDAD<br/>Derecho EXTINTO"]
+    Presenta -->|SÍ| Exito["✓ Sentencia ejecutiva<br/>de PAGO<br/>FIN EXITOSO"]
+    
+    ViaDuplicado --> JuezFirma["Juez ordena a obligados<br/>firmar duplicado<br/>o firma por ellos Art. 57"]
+    JuezFirma --> Duplicado["✓ Duplicado obtenido<br/>FIN EXITOSO"]
+    
+    %% PROCEDIMIENTOS ESPECIALES
+    subgraph "Procedimientos Simplificados"
+        Especial1 --> EspTitulo["<b>Título NO NEGOCIABLE</b><br/>Art. 66"]
+        EspTitulo --> EspProc1["NO requiere cancelación<br/>Duplicado directo<br/>Si obligado se niega:<br/>Juez firma Art. 57"]
+        
+        Especial2 --> EspMutil["<b>Deterioro Parcial</b><br/>Art. 65"]
+        EspMutil --> EspProc2["NO afecta esenciales<br/>NO requiere cancelación<br/>Juez ordena firma Art. 57"]
+    end
+    
+    %% Estilos - COLORES TIPO APPLE
+    classDef etapa fill:#0071e3,stroke:#005bb5,color:#fff,stroke-width:2px,rx:6px
+    classDef peligro fill:#ff453a,stroke:#d70015,color:#fff,stroke-width:2px,rx:6px
+    classDef exito fill:#32d74b,stroke:#248a3d,color:#fff,stroke-width:2px,rx:6px
+    classDef especial fill:#bf5af2,stroke:#8944ab,color:#fff,stroke-width:2px,rx:6px
+    classDef advertencia fill:#ff9f0a,stroke:#c66e00,color:#fff,stroke-width:2px,rx:6px
+    
+    class Etapa1,Etap5,Etapa2,Etapa3,Etapa4 etapa
+    class Desechada1,Revoca,Caducidad,NoAplica1,JuicioIneficaz peligro
+    class Exito,Duplicado,EspProc1,EspProc2 exito
+    class Especial1,Especial2 especial
+    class Plazo10,Plazo30,GarantiaOK,Presenta advertencia
+`;
+
+        const drawDiagram = async () => {
+            const element = document.querySelector('#mermaid-chart');
+            
+            try {
+                const { svg } = await mermaid.render('mermaid-svg', graphDefinition);
+                element.innerHTML = svg;
+                document.getElementById('loading-msg').style.display = 'none';
+                
+                window.pz = panzoom(element, {
+                    maxZoom: 5,
+                    minZoom: 0.1,
+                    initialZoom: 1,
+                    bounds: true,
+                    boundsPadding: 0.1
+                });
+                
+                if (window.innerWidth < 768) {
+                     window.pz.zoomAbs(0, 0, 0.4);
+                     window.pz.moveTo(0, 0);
+                }
+
+            } catch (error) {
+                console.error('Error renderizando mermaid:', error);
+                element.innerHTML = "Error al cargar el diagrama.";
+            }
+        };
+
+        drawDiagram();
+    </script>
+
+    <script>
+        function zoomIn() {
+            if (window.pz) {
+                const w = document.getElementById('diagram-container').clientWidth;
+                const h = document.getElementById('diagram-container').clientHeight;
+                window.pz.smoothZoom(w/2, h/2, 1.2);
+            }
+        }
+
+        function zoomOut() {
+            if (window.pz) {
+                const w = document.getElementById('diagram-container').clientWidth;
+                const h = document.getElementById('diagram-container').clientHeight;
+                window.pz.smoothZoom(w/2, h/2, 0.8);
+            }
+        }
+
+        function resetZoom() {
+            if (window.pz) {
+                window.pz.moveTo(0, 0);
+                window.pz.zoomAbs(0, 0, 1);
+            }
+        }
+    </script>
+
+</body>
+</html>
