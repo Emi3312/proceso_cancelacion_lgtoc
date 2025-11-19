@@ -86,10 +86,11 @@
             cursor: grabbing;
         }
 
+        /* MODIFICACIÓN: Quitamos justify-content center para control manual */
         .mermaid-output {
-            display: flex;
-            justify-content: center;
+            display: block; /* Cambiado de flex a block */
             transform-origin: 0 0;
+            width: fit-content;
         }
         
         .loading {
@@ -101,39 +102,27 @@
             color: #86868b;
         }
 
-        /* --- MARCA DE AGUA SUTIL (UPDATED) --- */
+        /* MARCA DE AGUA SUTIL */
         .watermark {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            
-            /* Fondo mucho más sutil (0.25 de opacidad) */
             background: rgba(255, 255, 255, 0.25);
-            
-            /* Blur para el efecto cristal */
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            
-            /* Borde muy fino y transparente */
             border: 1px solid rgba(255, 255, 255, 0.3);
-            
-            /* Sombra muy suave */
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            
-            /* Texto gris suave (0.4 de opacidad) */
             color: rgba(0, 0, 0, 0.4);
-            
             padding: 8px 18px;
             border-radius: 12px;
             font-size: 0.8rem;
             font-weight: 500;
             z-index: 100;
-            transition: all 0.4s ease; /* Transición suave */
+            transition: all 0.4s ease;
             user-select: none;
-            pointer-events: auto; /* Asegura que detecte el mouse */
+            pointer-events: auto;
         }
 
-        /* Efecto al pasar el mouse: Se hace visible */
         .watermark:hover {
             background: rgba(255, 255, 255, 0.85);
             color: #1d1d1f;
@@ -163,8 +152,7 @@
         </div>
     </header>
 
-    
-    <div class="watermark">Programado por: Porfirio Emiliano Osorio Rios</div>
+    <div class="watermark">Creado por: Tu Nombre Aquí</div>
 
     <div id="diagram-container">
         <div class="loading" id="loading-msg">Cargando diagrama...</div>
@@ -300,7 +288,7 @@ graph TB
         EspMutil --> EspProc2["NO afecta esenciales<br/>NO requiere cancelación<br/>Juez ordena firma Art. 57"]
     end
     
-    %% Estilos - COLORES TIPO APPLE
+    %% Estilos
     classDef etapa fill:#0071e3,stroke:#005bb5,color:#fff,stroke-width:2px,rx:6px
     classDef peligro fill:#ff453a,stroke:#d70015,color:#fff,stroke-width:2px,rx:6px
     classDef exito fill:#32d74b,stroke:#248a3d,color:#fff,stroke-width:2px,rx:6px
@@ -316,24 +304,51 @@ graph TB
 
         const drawDiagram = async () => {
             const element = document.querySelector('#mermaid-chart');
+            const container = document.getElementById('diagram-container');
             
             try {
                 const { svg } = await mermaid.render('mermaid-svg', graphDefinition);
                 element.innerHTML = svg;
                 document.getElementById('loading-msg').style.display = 'none';
                 
+                // Inicializar Panzoom
                 window.pz = panzoom(element, {
                     maxZoom: 5,
                     minZoom: 0.1,
                     initialZoom: 1,
-                    bounds: true,
-                    boundsPadding: 0.1
+                    bounds: false, // Permitir mover libremente
                 });
+
+                // --- LÓGICA DE CENTRADO Y AJUSTE AUTOMÁTICO ---
+                // Obtenemos el tamaño real del gráfico generado
+                const svgElement = element.querySelector('svg');
+                const bbox = svgElement.getBBox();
+                const diagramWidth = bbox.width;
+                const diagramHeight = bbox.height;
                 
-                if (window.innerWidth < 768) {
-                     window.pz.zoomAbs(0, 0, 0.4);
-                     window.pz.moveTo(0, 0);
-                }
+                // Tamaño del contenedor disponible
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+
+                // 1. Calcular el Zoom ideal para que quepa en el ancho
+                // Dejamos un 5% de margen (0.95)
+                let newZoom = (containerWidth / diagramWidth) * 0.95;
+                
+                // Si el zoom es muy grande (pc), lo limitamos a 1
+                if (newZoom > 1) newZoom = 1;
+
+                // 2. Aplicar el Zoom
+                // zoomAbs(x, y, zoom) -> hacemos zoom desde la esquina 0,0
+                window.pz.zoomAbs(0, 0, newZoom);
+
+                // 3. Centrar Horizontalmente
+                // Calculamos cuánto espacio sobra a los lados
+                const renderedWidth = diagramWidth * newZoom;
+                const offsetX = (containerWidth - renderedWidth) / 2;
+
+                // 4. Mover a la posición (X centrado, Y pegado arriba con margen)
+                // 50px de margen superior para que no choque con el header
+                window.pz.moveTo(offsetX, 20); 
 
             } catch (error) {
                 console.error('Error renderizando mermaid:', error);
@@ -345,6 +360,7 @@ graph TB
     </script>
 
     <script>
+        // Funciones actualizadas para respetar el nuevo centro
         function zoomIn() {
             if (window.pz) {
                 const w = document.getElementById('diagram-container').clientWidth;
@@ -362,10 +378,8 @@ graph TB
         }
 
         function resetZoom() {
-            if (window.pz) {
-                window.pz.moveTo(0, 0);
-                window.pz.zoomAbs(0, 0, 1);
-            }
+            // Al resetear, volvemos a ejecutar la lógica de centrado inicial
+            location.reload(); 
         }
     </script>
 
